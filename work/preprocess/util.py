@@ -16,7 +16,7 @@
 import os
 import datetime
 
-#import cv2
+import cv2
 import pandas as pd
 from sklearn.externals import joblib
 
@@ -65,9 +65,9 @@ class Util:
         return pd.read_csv(filename, sep=sep)
 
     @classmethod
-    def to_csv(cls, _df, filename, index=False, sep="\t"):
+    def to_csv(cls, _df, filename, index=False, sep="\t", compression="gzip"):
         cls.mkdir_file(filename)
-        _df.to_csv(filename, sep=sep, index=index)
+        _df.to_csv(filename, sep=sep, index=index, compression=compression)
 
     @classmethod
     def nowstr(cls):

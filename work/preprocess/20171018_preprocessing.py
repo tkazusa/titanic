@@ -35,6 +35,13 @@ if __name__ == "__main__":
     logger.info("size %s %s" % data.shape)
     logger.info("load end")
 
+    data["Age"].fillna(data.Age.median(), inplace = True)
+    logger.info("filling NA in the Age column with median")
+
+    data["Fare"].fillna(data.Fare.median(), inplace = True)
+    logger.info("filling NA in the Fare column with median")
+
+
 
     sex_dummy = pd.get_dummies(data["Sex"])
     data = pd.concat((data,sex_dummy), axis=1)
@@ -50,9 +57,9 @@ if __name__ == "__main__":
     data = data.drop("Embarked", axis=1)
     logger.info("size %s %s " % data.shape)
 
+
     data = data.drop("Ticket", axis=1)
     data = data.drop("Cabin", axis=1)
-    data = data.drop("Age", axis=1)
     data = data.drop("Name", axis=1)
     data = data.drop("PassengerId", axis=1)
 
