@@ -2,6 +2,7 @@
 
 # write code...
 """
+10 fold is the best
 2017-10-21/14:28:23 finder_best_cv.py __main__ 86 [INFO][<module>] mean acc scores are 3_folds:0.797539149888, 5_folds:0.822667405966, 10_folds:0.81041212221
 2017-10-21/14:28:23 finder_best_cv.py __main__ 89 [INFO][<module>] variance of acc scores are 3_folds:0.000858319695309, 5_folds:0.00111858253956, 10_folds:0.00289941848532
 
