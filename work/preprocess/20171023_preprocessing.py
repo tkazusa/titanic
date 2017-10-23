@@ -57,7 +57,7 @@ if __name__ == "__main__":
     data = data.drop("Embarked", axis=1)
     logger.info("size %s %s " % data.shape)
 
-
+    data = data.drop("PassengerId", axis=1)
     data = data.drop("Ticket", axis=1)
     data = data.drop("Cabin", axis=1)
     data = data.drop("Name", axis=1)
@@ -74,7 +74,7 @@ if __name__ == "__main__":
     test = test.drop("data_set", axis=1)
     logger.info("size %s %s " % test.shape)
     logger.info("writing preprocessed test")
-    data.to_csv(PREPROCESSED_TEST_DATA, index=False, compression="gzip")
+    test.to_csv(PREPROCESSED_TEST_DATA, index=False, compression="gzip")
 
 
 

@@ -22,8 +22,10 @@ logger = getLogger(__name__)
 if __name__ == "__main__":
     logger.info("load start")
 
-    target = pd.read_csv(ORG_TRAIN_DATA, usecols=["Survived"])
-    logger.info("target size %s %s" % target.shape)
+    train_target = pd.read_csv(ORG_TRAIN_DATA, usecols=["Survived"])
+    logger.info("target size %s %s" % train_target.shape)
+
+    test_target_ID = pd.read_csv(ORG_TEST_DATA, usecols=["PassengerId"])
 
     train = pd.read_csv(ORG_TRAIN_DATA).drop(labels=["Survived"], axis=1)
     logger.info("train size %s %s" % train.shape)
@@ -41,7 +43,10 @@ if __name__ == "__main__":
     logger.info("data size %s %s" % data.shape)
 
     logger.info("writing target")
-    target.to_csv("~/data/target.csv", index=False)
+    train_target.to_csv("~/data/train_target.csv", index=False)
+
+    logger.info("writing test target id")
+    test_target_ID.to_csv("~/data/test_target.csv", index=False)
 
     logger.info("writing data")
     data.to_csv(ORG_CONCAT_DATA, index=False)

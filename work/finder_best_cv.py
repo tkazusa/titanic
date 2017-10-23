@@ -8,6 +8,8 @@
 
 """
 
+
+
 import os
 from logging import getLogger, basicConfig
 
@@ -27,8 +29,8 @@ ORG_TEST_DATA = os.path.join(ORG_DATA_DIR, "test.csv")
 ORG_CONCAT_DATA = os.path.join(ORG_DATA_DIR, "data.csv")
 
 PREPROCESSED_DATA_DIR = os.path.join(APP_ROOT, 'data/preprocessed/')
-PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, "2017-10-21_preprocessed_train_data.csv.gz")
-PREPROCESSED_TEST_DATA = os.path.join(PREPROCESSED_DATA_DIR, "2017-10-21_preprocessed_test_data.csv.gz")
+PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, "2017-10-23_preprocessed_train_data.csv.gz")
+PREPROCESSED_TEST_DATA = os.path.join(PREPROCESSED_DATA_DIR, "2017-10-23_preprocessed_test_data.csv.gz")
 
 log_fmt = '%(asctime)s %(filename)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s '
 basicConfig(format=log_fmt, datefmt='%Y-%m-%d/%H:%M:%S', level='DEBUG')
