@@ -3,9 +3,10 @@
 # write code...
 
 import os
-from logging import getLogger, basicConfig
+import logging
 
 import pandas as pd
+import daiquiri
 
 APP_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../')
 ORG_DATA_DIR = os.path.join(APP_ROOT, "data/")
@@ -15,9 +16,12 @@ ORG_TEST_DATA = os.path.join(ORG_DATA_DIR, "test.csv")
 ORG_CONCAT_DATA = os.path.join(ORG_DATA_DIR, "data.csv")
 
 log_fmt = '%(asctime)s %(filename)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s '
-basicConfig(format=log_fmt,datefmt='%Y-%m-%d/%H:%M:%S',level='DEBUG')
-
-logger = getLogger(__name__)
+daiquiri.setup(level=logging.DEBUG,
+               outputs=(
+                   daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=log_fmt)),
+                   daiquiri.output.File("predict.log", level=logging.DEBUG)
+               ))
+logger = daiquiri.getLogger(__name__)
 
 if __name__ == "__main__":
     logger.info("load start")

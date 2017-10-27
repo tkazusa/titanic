@@ -11,12 +11,13 @@
 
 
 import os
-from logging import getLogger, basicConfig
+import logging
 
 import numpy as np
 import pandas as pd
 from  lightgbm.sklearn import LGBMClassifier
 from sklearn.metrics import accuracy_score
+import daiquiri
 
 from preprocess.split_cv import split_cv
 
@@ -33,9 +34,12 @@ PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, "2017-10-23_prepro
 PREPROCESSED_TEST_DATA = os.path.join(PREPROCESSED_DATA_DIR, "2017-10-23_preprocessed_test_data.csv.gz")
 
 log_fmt = '%(asctime)s %(filename)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s '
-basicConfig(format=log_fmt, datefmt='%Y-%m-%d/%H:%M:%S', level='DEBUG')
-
-logger = getLogger(__name__)
+daiquiri.setup(level=logging.DEBUG,
+               outputs=(
+                   daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=log_fmt)),
+                   daiquiri.output.File("predict.log", level=logging.DEBUG)
+               ))
+logger = daiquiri.getLogger(__name__)
 
 if __name__ == "__main__":
 

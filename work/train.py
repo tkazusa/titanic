@@ -3,14 +3,15 @@
 # write code..
 import os
 import pickle
-from logging import getLogger
+import logging
 
 import pandas as pd
 import numpy as np
 from sklearn.metrics import accuracy_score, log_loss, f1_score, roc_auc_score
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import ParameterGrid, StratifiedKFold
 from lightgbm.sklearn import LGBMClassifier
+import daiquiri
+
 
 APP_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../')
 ORG_DATA_DIR = os.path.join(APP_ROOT, "data/")
@@ -20,7 +21,14 @@ ORG_TARGET_DATA = os.path.join(ORG_DATA_DIR, "target.csv")
 PREPROCESSED_DATA_DIR = os.path.join(APP_ROOT, 'data/preprocessed/')
 PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, "2017-10-23_preprocessed_train_data.csv.gz")
 
-logger = getLogger(__name__)
+
+log_fmt = '%(asctime)s %(filename)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s '
+daiquiri.setup(level=logging.DEBUG,
+               outputs=(
+                   daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=log_fmt)),
+                   daiquiri.output.File("predict.log", level=logging.DEBUG)
+               ))
+logger = daiquiri.getLogger(__name__)
 
 
 def train_lightgbm(verbose=True):
@@ -103,7 +111,6 @@ def train_lightgbm(verbose=True):
         logger.info("n_estimators: {}".format(list_best_iter))
         params["n_estimators"] = np.mean(list_best_iter, dtype=int)
 
-        #params["n_estimators"] = 3
         score_acc = (np.mean(list_score_acc), np.min(list_score_acc), np.max(list_score_acc))
         score_logloss = (np.mean(list_score_logloss), np.min(list_score_logloss), np.max(list_score_logloss))
         score_f1 = (np.mean(list_score_f1), np.min(list_score_f1), np.max(list_score_f1))
@@ -141,21 +148,6 @@ def train_lightgbm(verbose=True):
     return clf
 
 if __name__ == "__main__":
-    from logging import StreamHandler, DEBUG, Formatter, FileHandler
-
-    log_fmt = Formatter('%(asctime)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s ')
-    handler = FileHandler('train.py.log', 'w')
-    handler.setLevel(DEBUG)
-    handler.setFormatter(log_fmt)
-    logger.setLevel(DEBUG)
-    logger.addHandler(handler)
-
-    handler = StreamHandler()
-    handler.setLevel(DEBUG)
-    handler.setFormatter(log_fmt)
-    logger.setLevel(DEBUG)
-    logger.addHandler(handler)
-
     clf = train_lightgbm()
     with open('model.pkl', 'wb') as f:
         pickle.dump(clf, f, -1)

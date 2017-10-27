@@ -3,11 +3,12 @@
 # write code...
 import os
 import pickle
-from logging import getLogger, basicConfig
+import logging
 import gc
 
 import pandas as pd
 import numpy
+import daiquiri
 
 from features import FEATURE
 
@@ -23,9 +24,12 @@ PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, "2017-10-23_prepro
 PREPROCESSED_TEST_DATA = os.path.join(PREPROCESSED_DATA_DIR, "2017-10-23_preprocessed_test_data.csv.gz")
 
 log_fmt = '%(asctime)s %(filename)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s '
-basicConfig(format=log_fmt, datefmt='%Y-%m-%d/%H:%M:%S', level='DEBUG')
-
-logger = getLogger(__name__)
+daiquiri.setup(level=logging.DEBUG,
+               outputs=(
+                   daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=log_fmt)),
+                   daiquiri.output.File("predict.log", level=logging.DEBUG)
+               ))
+logger = daiquiri.getLogger(__name__)
 
 def main():
     logger.info("start loading data")
