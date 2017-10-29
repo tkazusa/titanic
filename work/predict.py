@@ -36,6 +36,7 @@ def main():
     with open("model.pkl", "rb") as f:
         model = pickle.load(f)
 
+
     all_test_data = pd.read_csv(PREPROCESSED_TEST_DATA, compression="gzip", chunksize=1000)
     #logger.info("end load test data size: %s %s" % all_test_data.shape)
     df_submit = pd.DataFrame()
