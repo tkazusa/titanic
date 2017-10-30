@@ -13,11 +13,7 @@ from lightgbm.sklearn import LGBMClassifier
 from hyperopt import hp, tpe, Trials, STATUS_OK, fmin
 import daiquiri
 
-import random
-
-random.seed(12)
-random_state = 3655
-np.random.seed(12)
+random_state = np.random.RandomState(10)
 
 APP_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../')
 ORG_DATA_DIR = os.path.join(APP_ROOT, "data/")
@@ -53,23 +49,23 @@ def train_lightgbm_hopt(verbose=True):
     sample_weight = np.where(y == 1, w, 1)
     logger.info("calc samples for LightGBM's sample weight neg: %s pos: %s" % (num_neg, num_pos))
 
+
+
     def score(params):
         params = {"max_depth": int(params["max_depth"]),
-                  "subsample": params["subsample"],
-                  "colsample_bytree": params['colsample_bytree'],
+                  "subsample": round(params["subsample"],3),
+                  "colsample_bytree": round(params['colsample_bytree'],3),
                   "num_leaves": int(params['num_leaves']),
                   "n_jobs": -2
                   #"is_unbalance": params['is_unbalance']
                   }
-        print(params)
 
         clf = LGBMClassifier(n_estimators=500, learning_rate=0.05, **params)
-        logger.info("Hopt training with params %s", params)
 
         list_score_acc = []
         list_score_logloss = []
 
-        skf = StratifiedKFold(n_splits=2, shuffle=True, random_state=3655)
+        skf = StratifiedKFold(n_splits=10, shuffle=True, random_state=3655)
         for train, val in skf.split(X, y):
             X_train, X_val = X[train], X[val]
             y_train, y_val = y[train], y[val]
@@ -104,43 +100,43 @@ def train_lightgbm_hopt(verbose=True):
         #params["n_estimators"] = np.mean(list_best_iter, dtype=int)
 
         score_acc = (np.mean(list_score_acc), np.min(list_score_acc), np.max(list_score_acc))
+        #logger.info("score_acc %s" % np.mean(list_score_acc))
+
         #score_logloss = (np.mean(list_score_logloss), np.min(list_score_logloss), np.max(list_score_logloss))
         #score_f1 = (np.mean(list_score_f1), np.min(list_score_f1), np.max(list_score_f1))
         #score_auc = (np.mean(list_score_auc), np.min(list_score_auc), np.max(list_score_auc))
 
         logloss = np.mean(list_score_logloss)
-        return {'loss' : logloss,  'status': STATUS_OK}
+        return {'loss' : logloss,  'status': STATUS_OK, 'localCV_acc': score_acc}
 
     space = {"max_depth": hp.quniform('max_depth', 1, 10 ,1),
              "subsample": hp.uniform('subsample', 0.3, 0.8),
              "colsample_bytree": hp.uniform('colsample_bytree', 0.3, 0.8),
-             "num_leaves": hp.quniform('num_leaves', 5, 10, 1),
+             "num_leaves": hp.quniform('num_leaves', 5, 100, 1),
              #"is_unbalance": hp.choice('is_unbalance', [True, False])
              }
 
     trials = Trials()
-    best_params = fmin(fn=score, space=space, algo=tpe.suggest, trials=trials, max_evals=200)
+    best_params = fmin(rstate=random_state,fn=score, space=space, algo=tpe.suggest, trials=trials, max_evals=100)
+    logger.info("localCV_acc %s" % list(filter(lambda x : x["loss"] == min(trials.losses()), trials.results))[0]["localCV_acc"][0])
 
-    print(best_params)
+
 
     best_params = {"max_depth": int(best_params["max_depth"]),
                    "subsample": best_params["subsample"],
                    "colsample_bytree": best_params['colsample_bytree'],
-                   "num_leaves": int(best_params['num_leaves']),
+                   "num_leaves": int(best_params['num_leaves'])
                   #"is_unbalance": best_params['is_unbalance']
                   }
-
     logger.info("best params are %s" % best_params)
 
     clf = LGBMClassifier(n_estimators=500, learning_rate=0.05, **best_params)
-    print(clf)
     logger.info("start training with best params")
     clf.fit(X,y)
 
     imp = pd.DataFrame(clf.feature_importances_, columns=['imp'])
-    print(pd.read_csv(PREPROCESSED_TRAIN_DATA).columns)
     imp.index = pd.read_csv(PREPROCESSED_TRAIN_DATA).columns
-    print(imp)
+    logger.info("important features are %s" %imp)
     with open('features.py', 'a') as f:
         f.write('FEATURE = ["' + '","'.join(map(str, imp[imp['imp'] > 0].index.values)) + '"]\n')
 
