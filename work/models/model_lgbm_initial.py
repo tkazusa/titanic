@@ -12,11 +12,7 @@ from sklearn.model_selection import ParameterGrid, StratifiedKFold
 from lightgbm.sklearn import LGBMClassifier
 
 
-from util import Util
-logger = Util.Logger()
-
-
-from model import ModelBase
+from models.model import ModelBase
 
 
 

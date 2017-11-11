@@ -37,13 +37,8 @@ class RunnerBase(object, metaclass=ABCMeta):
         """calculate weight for imbalance data"""
         raise NotImplementedError
 
-
     @abstractmethod
     def run_train(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def run_train_alldata(self):
         raise NotImplementedError
 
     @abstractmethod

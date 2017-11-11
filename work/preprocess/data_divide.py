@@ -2,6 +2,10 @@
 
 # write code...
 
+# coding=utf-8
+
+# write code...
+
 import os
 import logging
 
@@ -54,4 +58,3 @@ if __name__ == "__main__":
 
     logger.info("writing data")
     data.to_csv(ORG_CONCAT_DATA, index=False)
-

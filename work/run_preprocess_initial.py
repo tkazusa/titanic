@@ -7,7 +7,7 @@ import logging
 
 import daiquiri
 
-from preprocess_20171023_initial import PreprocesserInitial
+from preprocess.preprocess_20171023_initial import PreprocesserInitial
 
 
 APP_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../')

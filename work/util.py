@@ -18,6 +18,10 @@ import datetime
 
 import pandas as pd
 from sklearn.externals import joblib
+from sklearn.model_selection import StratifiedKFold
+
+logfile_name = "logs/" + str(datetime.date.today().isoformat())+ ".log"
+
 
 class Util:
 
@@ -31,18 +35,6 @@ class Util:
         dr = os.path.dirname(path)
         if not os.path.exists(dr):
             os.makedirs(dr)
-
-    @classmethod
-    def save_image(cls, filename, image):
-        cv2.imwrite(filename, image)
-
-    @classmethod
-    def read_image(cls, filename):
-        return cv2.imread(filename)
-
-    @classmethod
-    def read_image_gray(cls, filename):
-        return cv2.imread(filename, 0)
 
     @classmethod
     def dump(cls, obj, filename, compress=0):
@@ -76,7 +68,7 @@ class Util:
         return str(datetime.datetime.now().strftime("%H-%M-%S"))
 
     @classmethod
-    def Logger(cls):
+    def Logger(cls, logfile_name):
         import logging
         import daiquiri
 
@@ -84,7 +76,36 @@ class Util:
         daiquiri.setup(level=logging.DEBUG,
                        outputs=(
                            daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=log_fmt)),
-                           daiquiri.output.File("predict.log", level=logging.DEBUG)
+                           daiquiri.output.File(logfile_name, level=logging.DEBUG)
                        ))
         return daiquiri.getLogger(__name__)
+
+
+    @classmethod
+    def split_cv(cls, X, y, num_of_folds, DIR_TO_SAVED):
+        """
+        :param X: array
+        :param y: array
+        :param num_of_folds:[int, int, ...]
+        :X_train, X_val, y_train, y_val are saved on DIr "data/n_folds_xx"
+        """
+        logger = cls.Logger(logfile_name=logfile_name)
+        for num_of_fold in num_of_folds:
+            logger.info("splitting to %s division data" % num_of_fold)
+            skf = StratifiedKFold(n_splits=num_of_fold)
+            CV_DIR = os.path.join(DIR_TO_SAVED, "n_folds_%s/" % num_of_fold)
+            for i, (train_idx, test_idx) in enumerate(skf.split(X, y)):
+                logger.info("writing %s th cv data")
+                X_train, X_val = pd.DataFrame(X[train_idx]), pd.DataFrame(X[test_idx])
+                logger.info("X_train data shape %s %s" % X_train.shape)
+                logger.info("X_val data shape %s %s" % X_val.shape)
+                y_train, y_val = pd.DataFrame(y[train_idx]), pd.DataFrame(y[test_idx])
+                logger.info("y_train data shape %s %s" % y_train.shape)
+                logger.info("y_val data shape %s %s" % y_val.shape)
+
+                logger.info("saving on %s" % CV_DIR)
+                cls.to_csv(X_train, os.path.join(CV_DIR, "X_train_%s.csv" % i))
+                cls.to_csv(X_val, os.path.join(CV_DIR, "X_val_%s.csv" % i))
+                cls.to_csv(y_train, os.path.join(CV_DIR, "y_train_%s.csv" % i))
+                cls.to_csv(y_val, os.path.join(CV_DIR, "y_val_%s.csv" % i))
 

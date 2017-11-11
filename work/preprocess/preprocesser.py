@@ -16,5 +16,3 @@ class PreprocesserBase(object, metaclass=ABCMeta):
     def fetch_origin_data(self):
         raise NotImplementedError
 
-
-

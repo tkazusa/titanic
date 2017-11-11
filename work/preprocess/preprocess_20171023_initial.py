@@ -9,10 +9,9 @@ import logging
 import pandas as pd
 import daiquiri
 
-from preprocesser import PreprocesserBase
+from preprocess.preprocesser import PreprocesserBase
 
-
-APP_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../')
+APP_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../')
 ORG_DATA_DIR = os.path.join(APP_ROOT, "data/")
 
 ORG_TRAIN_DATA = os.path.join(ORG_DATA_DIR, "train.csv")
@@ -36,7 +35,6 @@ logger = daiquiri.getLogger(__name__)
 class PreprocesserInitial(PreprocesserBase):
 
     def __init__(self):
-        super(PreprocesserBase, self).__init__()
         self.data = None
 
     def fetch_origin_data(self, ORG_DATA_PATH):
