@@ -13,7 +13,7 @@ from lightgbm.sklearn import LGBMClassifier
 from hyperopt import hp, tpe, Trials, STATUS_OK, fmin
 hopt_random_state = np.random.RandomState(3655)
 
-from bases.runner import RunnerBase
+from runner_base import RunnerBase
 from models.model_lgbm_initial import ModelLgbm_initial
 from util import Util
 logfile_name = "logs/" + str(date.today().isoformat())+ ".log"

@@ -9,7 +9,7 @@ import logging
 import pandas as pd
 import daiquiri
 
-from bases.preprocesser import PreprocesserBase
+from preprocess.preprocesser import PreprocesserBase
 
 APP_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../')
 ORG_DATA_DIR = os.path.join(APP_ROOT, "data/")
