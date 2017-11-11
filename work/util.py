@@ -16,10 +16,8 @@
 import os
 import datetime
 
-#import cv2
 import pandas as pd
 from sklearn.externals import joblib
-
 
 class Util:
 
@@ -76,4 +74,17 @@ class Util:
     @classmethod
     def nowstrhms(cls):
         return str(datetime.datetime.now().strftime("%H-%M-%S"))
+
+    @classmethod
+    def Logger(cls):
+        import logging
+        import daiquiri
+
+        log_fmt = '%(asctime)s %(filename)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s '
+        daiquiri.setup(level=logging.DEBUG,
+                       outputs=(
+                           daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=log_fmt)),
+                           daiquiri.output.File("predict.log", level=logging.DEBUG)
+                       ))
+        return daiquiri.getLogger(__name__)
 
