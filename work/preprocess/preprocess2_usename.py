@@ -7,9 +7,11 @@ from datetime import date
 import logging
 
 import pandas as pd
-import daiquiri
 
-from preprocess.preprocesser import PreprocesserBase
+from util import Util
+logfile_name = "logs/" + str(date.today().isoformat())+ ".log"
+logger = Util.Logger(logfile_name=logfile_name)
+from bases.preprocesser import PreprocesserBase
 
 APP_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../')
 ORG_DATA_DIR = os.path.join(APP_ROOT, "data/")
@@ -19,20 +21,11 @@ ORG_TEST_DATA = os.path.join(ORG_DATA_DIR, "test.csv")
 ORG_CONCAT_DATA = os.path.join(ORG_DATA_DIR, "data.csv")
 
 PREPROCESSED_DATA_DIR = os.path.join(APP_ROOT, 'data/preprocessed/')
-PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, str(date.today().isoformat())+"_preprocessed_train_data.csv.gz")
-PREPROCESSED_TEST_DATA = os.path.join(PREPROCESSED_DATA_DIR, str(date.today().isoformat())+"_preprocessed_test_data.csv.gz")
+PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, "preprocessed2_train_data.csv")
+PREPROCESSED_TEST_DATA = os.path.join(PREPROCESSED_DATA_DIR, "preprocessed2_test_data.csv")
 
 
-log_fmt = '%(asctime)s %(filename)s %(name)s %(lineno)d [%(levelname)s][%(funcName)s] %(message)s '
-daiquiri.setup(level=logging.DEBUG,
-               outputs=(
-                   daiquiri.output.Stream(formatter=daiquiri.formatter.ColorFormatter(fmt=log_fmt)),
-                   daiquiri.output.File("predict.log", level=logging.DEBUG)
-               ))
-logger = daiquiri.getLogger(__name__)
-
-
-class PreprocesserInitial(PreprocesserBase):
+class PreprocesserUsename(PreprocesserBase):
 
     def __init__(self):
         self.data = None
@@ -49,6 +42,21 @@ class PreprocesserInitial(PreprocesserBase):
         for col_name in list_col_fillna:
             logger.info("filling NA in the %s column with median" % col_name)
             self.data[col_name].fillna(self.data[col_name].median(), inplace=True)
+
+
+    def use_honorific(self):
+        honorifics = ["Master", "Mrs", "Miss", "Mr"]
+        for honorific in honorifics:
+            self.data[honorific] = self.data["Name"].where(self.data["Name"].str.contains(honorific), 0)
+            self.data[honorific] = self.data[honorific].where(self.data[honorific] == 0, 1)
+
+        self.data["honorific_Unknown"] = self.data["Name"].where(self.data["Name"].str.contains("Master")
+                                                    | self.data["Name"].str.contains("Mr")
+                                                    | self.data["Name"].str.contains("Miss")
+                                                    | self.data["Name"].str.contains("Mrs")
+                                                    , 1)
+        self.data["honorific_Unknown"] = self.data["honorific_Unknown"].where(self.data["honorific_Unknown"] == 1, 0)
+
 
     def dummy(self, list_col_dummy):
         for col_name in list_col_dummy:
@@ -76,11 +84,11 @@ class PreprocesserInitial(PreprocesserBase):
         train = train.drop("data_set", axis=1)
         logger.info("train data \n %s" % train.head(2))
         logger.info("writing preprocessed train data size:%s,%s" % train.shape)
-        train.to_csv(PREPROCESSED_TRAIN_DATA, index=False, compression="gzip")
+        Util.to_csv(train, PREPROCESSED_TRAIN_DATA)
 
     def save_test_data(self):
         test = self.data[self.data["data_set"] == "test"]
         test = test.drop("data_set", axis=1)
         logger.info("test data \n %s" % test.head(2))
         logger.info("writing preprocessed test data size:%s,%s" % test.shape)
-        test.to_csv(PREPROCESSED_TEST_DATA, index=False, compression="gzip")
+        Util.to_csv(test, PREPROCESSED_TEST_DATA, index=False)

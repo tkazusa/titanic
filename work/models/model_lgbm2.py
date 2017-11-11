@@ -17,16 +17,7 @@ from util import Util
 
 
 
-APP_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../')
-ORG_DATA_DIR = os.path.join(APP_ROOT, "data/")
-
-ORG_TARGET_DATA = os.path.join(ORG_DATA_DIR, "target.csv")
-
-PREPROCESSED_DATA_DIR = os.path.join(APP_ROOT, 'data/preprocessed/')
-PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, "2017-10-23_preprocessed_train_data.csv.gz")
-
-
-class ModelLgbm_initial(ModelBase):
+class ModelLgbm_2(ModelBase):
     """Model Base interface
 
     Methods:
@@ -36,12 +27,13 @@ class ModelLgbm_initial(ModelBase):
     """
 
     def __init__(self):
-        raise NotImplementedError
+        self.feature_importances_ = None
+
 
     def _set_algorithm(self, prms):
         model = LGBMClassifier(objective="binary",
                                n_estimators=500,
-                               learning_rate=0.05
+                               learning_rate=0.05,
                                **prms)
         return model
 
@@ -51,13 +43,14 @@ class ModelLgbm_initial(ModelBase):
         self.model.fit(X_tr, y_tr,
                   sample_weight=w_tr,
                   eval_sample_weight=[w_val],
-                  eval_set=[X_val, y_val],
+                  #eval_set=[X_val, y_val],
                   eval_metric="logloss",
+                  #early_stopping_rounds=20,
                   verbose=False
                   )
 
-        self._score_acc = accuracy_score(y_val, model.predict(X_val), sample_weight=w_val)
-        self._score_logloss = log_loss(y_val, model.predict_proba(X_val), sample_weight=w_val)
+        self._score_acc = accuracy_score(y_val, self.model.predict(X_val), sample_weight=w_val)
+        self._score_logloss = log_loss(y_val, self.model.predict_proba(X_val), sample_weight=w_val)
 
     def train_all(self, prms, X_tr, y_tr, w_tr):
 
@@ -65,19 +58,23 @@ class ModelLgbm_initial(ModelBase):
         self.model.fit(X_tr, y_tr,
                   sample_weight=w_tr,
                   eval_metric="logloss",
+                  #early_stopping_rounds=20,
                   verbose=False
                   )
-
+        self.feature_importances_ = self.model.feature_importances_
 
     def save_model(self):
-        Util.dump(self.model, "../model/model/lgb_initial.pkl")
+        Util.dump(self.model, "models/model_lgb2.pkl")
 
     def load_model(self):
-        model = Util.load("../model/model/lgb_initial.pkl")
+        model = Util.load("models/model_lgb2.pkl")
         self.model = model
 
     def predict(self, X):
         return self.model.predict(X)
+
+    def predict_proba(self, X):
+        return self.model.predict_proba(X)
 
 
 

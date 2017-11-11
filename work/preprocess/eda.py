@@ -96,6 +96,11 @@ for categorical_feature in categorical_features_train:
 
 numerical_features = test.ix[:, train.dtypes != object].columns
 
+
+
+
+
+
 print("")
 print("===train===")
 print(train[numerical_features].describe())
@@ -104,3 +109,5 @@ print("===test===")
 print(test[numerical_features].describe())
 
 print(data[numerical_features].corr)
+
+

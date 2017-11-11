@@ -51,11 +51,11 @@ class Util:
         return joblib.load(filename)
 
     @classmethod
-    def read_csv(cls, filename, sep="\t"):
-        return pd.read_csv(filename, sep=sep)
+    def read_csv(cls, filename, sep=",", header = None, compression=None, chunksize=None):
+        return pd.read_csv(filename, header = header, compression=compression, chunksize=chunksize, sep=sep)
 
     @classmethod
-    def to_csv(cls, _df, filename, index=False, sep="\t"):
+    def to_csv(cls, _df, filename, index=False, sep=","):
         cls.mkdir_file(filename)
         _df.to_csv(filename, sep=sep, index=index)
 

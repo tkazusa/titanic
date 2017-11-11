@@ -18,7 +18,6 @@ from models.model_lgbm_initial import ModelLgbm_initial
 from util import Util
 logfile_name = "logs/" + str(date.today().isoformat())+ ".log"
 logger = Util.Logger(logfile_name=logfile_name)
-#from preprocess.split_cv import split_cv
 
 
 APP_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../')

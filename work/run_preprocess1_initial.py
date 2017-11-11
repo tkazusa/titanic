@@ -33,7 +33,7 @@ logger = daiquiri.getLogger(__name__)
 
 def main():
     list_col_fillna = ["Age", "Fare"]
-    list_col_dummy = ["Sex", "Embarked"]
+    list_col_dummy = ["Sex", "Pclass", "Embarked"]
     list_col_drop = ["PassengerId", "Ticket", "Cabin", "Name"]
 
     prep = PreprocesserInitial()

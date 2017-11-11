@@ -13,12 +13,11 @@ from lightgbm.sklearn import LGBMClassifier
 from hyperopt import hp, tpe, Trials, STATUS_OK, fmin
 hopt_random_state = np.random.RandomState(3655)
 
-from runner_base import RunnerBase
-from models.model_lgbm_initial import ModelLgbm_initial
+from bases.runner import RunnerBase
+from models.model_lgbm2 import ModelLgbm_2
 from util import Util
 logfile_name = "logs/" + str(date.today().isoformat())+ ".log"
 logger = Util.Logger(logfile_name=logfile_name)
-#from preprocess.split_cv import split_cv
 
 
 APP_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../')
@@ -28,8 +27,8 @@ ORG_TARGET_DATA = os.path.join(ORG_DATA_DIR, "target.csv")
 TARGET_ID = os.path.join(ORG_DATA_DIR, "test_target.csv")
 
 PREPROCESSED_DATA_DIR = os.path.join(APP_ROOT, 'data/preprocessed/')
-PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, "2017-10-23_preprocessed_train_data.csv.gz")
-PREPROCESSED_TEST_DATA = os.path.join(PREPROCESSED_DATA_DIR, "2017-10-23_preprocessed_test_data.csv.gz")
+PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, "preprocessed2_train_data.csv")
+PREPROCESSED_TEST_DATA = os.path.join(PREPROCESSED_DATA_DIR, "preprocessed2_test_data.csv")
 
 
 class RunnerLgbm_initial(RunnerBase):
@@ -41,21 +40,21 @@ class RunnerLgbm_initial(RunnerBase):
         self.n_folds_list = n_folds_list
 
     def _set_model(self):
-        return ModelLgbm_initial()
+        return ModelLgbm_2()
 
     def _fetch_preprocessed_data(self):
         raise NotImplementedError
 
     def load_X(self):
         logger.info("Preprocessed X load start")
-        X = pd.read_csv(PREPROCESSED_TRAIN_DATA).values
+        X = Util.read_csv(PREPROCESSED_TRAIN_DATA, header=0).values
         logger.info("X load end")
         self.X = X
 
 
     def load_y(self):
         logger.info("Preprocessed y load start")
-        y = pd.read_csv(ORG_TARGET_DATA).values
+        y = Util.read_csv(ORG_TARGET_DATA, header=0).values
         y_c, y_r = y.shape
         y = y.reshape(y_c, )
         logger.info("y load end")
@@ -77,18 +76,17 @@ class RunnerLgbm_initial(RunnerBase):
         acc_score_means = []
         acc_score_vars = []
         for num_of_fold in self.n_folds_list:
-            print("============")
-            logger.info("==evaluating %s fold==" % num_of_fold)
+            logger.info("evaluating %s fold" % num_of_fold)
             CV_DIR = os.path.join(ORG_DATA_DIR, "n_folds_%s/" % num_of_fold)
             acc_score = []
             for i in range(num_of_fold):
                 logger.info("loading %s th cv data in %s folds" % (i, num_of_fold))
-                X_train = pd.read_csv(os.path.join(CV_DIR, "X_train_%s.csv") % i, header=None, sep="\t").values
-                X_val = pd.read_csv(os.path.join(CV_DIR, "X_val_%s.csv") % i, header=None, sep="\t").values
-                y_train = pd.read_csv(os.path.join(CV_DIR, "y_train_%s.csv") % i, header=None, sep="\t").values
+                X_train = Util.read_csv(os.path.join(CV_DIR, "X_train_%s.csv") % i, header=None, sep=",").values
+                X_val = Util.read_csv(os.path.join(CV_DIR, "X_val_%s.csv") % i, header=None, sep=",").values
+                y_train = Util.read_csv(os.path.join(CV_DIR, "y_train_%s.csv") % i, header=None, sep=",").values
                 y_c, y_r = y_train.shape
                 y_train = y_train.reshape(y_c, )
-                y_val = pd.read_csv(os.path.join(CV_DIR, "y_val_%s.csv") % i, header=None, sep="\t").values
+                y_val = Util.read_csv(os.path.join(CV_DIR, "y_val_%s.csv") % i, header=None, sep=",").values
                 y_c, y_r = y_val.shape
                 y_val = y_val.reshape(y_c, )
                 logger.info("end loading %s th cv data in %s folds" % (i, num_of_fold))
@@ -97,16 +95,20 @@ class RunnerLgbm_initial(RunnerBase):
                 logger.info("y_train.shape: %s" % y_train.shape)
                 logger.info("y_val.shape: %s" % y_val.shape)
 
-                clf = LGBMClassifier(objective="binary",
-                                     n_estimators=20)
-
                 weight_train = self._calc_w(y_train)
+                weight_val = self._calc_w(y_val)
 
-                clf.fit(X_train, y_train,
-                        sample_weight=weight_train,
-                        eval_set=[(X_val, y_val)],
-                        verbose=True)
-                y_pred = clf.predict(X_val)
+                model = self._set_model()
+                model.train(prms={"max_depth": 5},
+                            X_tr = X_train,
+                            X_val = X_val,
+                            y_tr = y_train,
+                            y_val = y_val,
+                            w_tr = weight_train,
+                            w_val = weight_val)
+
+
+                y_pred = model.predict(X_val)
                 logger.info("acc socore: %s folds, %s iteration" % (num_of_fold, i))
                 acc_score.append(accuracy_score(y_val, y_pred))
             logger.info("mean acc score of %s folds is %s" % (num_of_fold, np.mean(acc_score)))
@@ -131,14 +133,12 @@ class RunnerLgbm_initial(RunnerBase):
         skf = StratifiedKFold(n_splits=self._best_cv, shuffle=True, random_state=3655)
         sample_weight = self._calc_w(self.y)
         def score(params, skf=skf, sample_weight=sample_weight):
-            params = {"max_depth": int(params["max_depth"]),
-                      "subsample": params["subsample"],
-                      "colsample_bytree": params['colsample_bytree'],
-                      "num_leaves": int(params['num_leaves']),
-                      "n_jobs": -2
-                      }
-
-            clf = LGBMClassifier(n_estimators=500, learning_rate=0.05, **params)
+            prms = {"max_depth": int(params["max_depth"]),
+                    "subsample": params["subsample"],
+                    "colsample_bytree": params['colsample_bytree'],
+                    "num_leaves": int(params['num_leaves']),
+                    "n_jobs": -2
+                    }
 
             list_score_acc = []
             list_score_logloss = []
@@ -150,25 +150,22 @@ class RunnerLgbm_initial(RunnerBase):
                 weight_train = sample_weight[train]
                 weight_val = sample_weight[val]
 
-                clf.fit(X_train, y_train,
-                        sample_weight=weight_train,
-                        eval_sample_weight=[weight_val],
-                        eval_set=[(X_val, y_val)],
 
-                        eval_metric="logloss",
-                        early_stopping_rounds=0,
-                        verbose=False
-                        )
+                model = self._set_model()
+                model.train(prms=prms,
+                            X_tr = X_train,
+                            X_val = X_val,
+                            y_tr = y_train,
+                            y_val = y_val,
+                            w_tr = weight_train,
+                            w_val = weight_val)
 
-                _score_acc = accuracy_score(y_val, clf.predict(X_val), sample_weight=weight_val)
-                _score_logloss = log_loss(y_val, clf.predict_proba(X_val), sample_weight=weight_val)
-
-                list_score_acc.append(_score_acc)
-                list_score_logloss.append(_score_logloss)
+                list_score_acc.append(model._score_acc)
+                list_score_logloss.append(model._score_logloss)
                 """
                 ##n_estimaters=0 causes error at .fit()
-                if clf.best_iteration_ != -1:
-                    list_best_iter.append(clf.best_iteration_)
+                if model.best_iteration_ != -1:
+                    list_best_iter.append(model.best_iteration_)
                 else:
                     list_best_iter.append(params['n_estimators'])
                 break
@@ -193,7 +190,7 @@ class RunnerLgbm_initial(RunnerBase):
                  }
 
         trials = Trials()
-        best_params = fmin(rstate=hopt_random_state, fn=score, space=space, algo=tpe.suggest, trials=trials, max_evals=10)
+        best_params = fmin(rstate=hopt_random_state, fn=score, space=space, algo=tpe.suggest, trials=trials, max_evals=80)
         self.localCV_acc = list(filter(lambda x: x["loss"] == min(trials.losses()), trials.results))[0]["localCV_acc"][0]
         self.localCV_loss = min(trials.losses())
         logger.info("localCV_acc %s" %self.localCV_acc)
@@ -206,9 +203,11 @@ class RunnerLgbm_initial(RunnerBase):
                        }
         logger.info("best params are %s" % self.best_params)
 
-        model = LGBMClassifier(n_estimators=500, learning_rate=0.05, **self.best_params)
+        sample_weight = self._calc_w(self.y)
+        model = self._set_model()
         logger.info("start training with best params")
-        model.fit(self.X, self.y)
+
+        model.train_all(prms=self.best_params, X_tr=self.X, y_tr=self.y, w_tr=sample_weight)
 
         imp = pd.DataFrame(model.feature_importances_, columns=['imp'])
         imp.index = pd.read_csv(PREPROCESSED_TRAIN_DATA).columns
@@ -216,7 +215,7 @@ class RunnerLgbm_initial(RunnerBase):
         with open('features.py', 'a') as f:
             f.write('FEATURE = ["' + '","'.join(map(str, imp[imp['imp'] > 0].index.values)) + '"]\n')
 
-        Util.dump(model, os.path.join("models","model_lgbm_initial.pkl"))
+        model.save_model()
         del model, sample_weight, skf, imp
         gc.collect()
 
@@ -224,20 +223,17 @@ class RunnerLgbm_initial(RunnerBase):
 
     def run_predict(self):
         logger.info("start predict")
-        model = Util.load(os.path.join("models", "model_lgbm_initial.pkl"))
+        model = self._set_model()
+        model.load_model()
 
-        all_test_data = pd.read_csv(PREPROCESSED_TEST_DATA, compression="gzip", chunksize=1000)
+        all_test_data = Util.read_csv(PREPROCESSED_TEST_DATA, header=0).values
         df_submit = pd.DataFrame()
-        for i, df in enumerate(all_test_data):
-            df_submit = pd.read_csv(TARGET_ID)
-            df_submit["Survived"] = model.predict(df)
-            df_submit["Proba"] = model.predict_proba(df)[:, 1]
-            logger.info("end predict")
+        df_submit["PassengerID"] = Util.read_csv(TARGET_ID, header=0)
+        df_submit["Survived"] = model.predict(all_test_data)
+        df_submit["Proba"] = model.predict_proba(all_test_data)[:, 1]
+        logger.info("end predict")
 
-            logger.info("chunk %s: %s" % (i, df_submit.shape[0]))
-            del df
-            gc.collect()
-        Util.to_csv(df_submit, "result/submit.csv", index=False)
+        Util.to_csv(df_submit, "result/submit2.csv", index=False)
         logger.info("localCV acc: %s" %self.localCV_acc)
         logger.info("localCV loss: %s" %self.localCV_loss)
         logger.info("submit file saved")
