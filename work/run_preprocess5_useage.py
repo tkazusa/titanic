@@ -12,16 +12,18 @@ ORG_CONCAT_DATA = os.path.join(ORG_DATA_DIR, "data.csv")
 def main():
     list_col_fillna = ["Fare"]
     list_col_dummy = ["Sex", "Pclass", "Embarked"]
-    list_col_drop = ["Ticket", "Name"]
+    list_col_drop = ["PassengerId", "Ticket", "Name", "C", "Q", "S", "honorific_Unknown", "Master", "Age_Unknown",
+                     "Cabin_A", "Cabin_B", "Cabin_C", "Cabin_D", "Cabin_E", "Cabin_F",]
 
     prep = PreprocesserUseAge()
     prep.fetch_origin_data(ORG_DATA_PATH=ORG_CONCAT_DATA)
-    prep.fillna_median(list_col_fillna=list_col_fillna)
+    #prep.fillna_median(list_col_fillna=list_col_fillna)
     prep.use_honorific()
     prep.dummy(list_col_dummy=list_col_dummy)
     prep.use_cabin_information()
     prep.use_familysize()
     prep.estimate_age()
+    prep.estimate_fare()
     prep.drop_column(list_col_drop=list_col_drop)
     prep.drop_na_samples()
     prep.save_train_data()

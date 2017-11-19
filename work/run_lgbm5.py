@@ -14,8 +14,9 @@ from hyperopt import hp, tpe, Trials, STATUS_OK, fmin
 hopt_random_state = np.random.RandomState(3655)
 
 from bases.runner import RunnerBase
-from models.model_lgbm4 import ModelLgbm_4
+from models.model_lgbm5 import ModelLgbm_5
 from util import Util
+from features import FEATURE
 logfile_name = "logs/" + str(date.today().isoformat())+ ".log"
 logger = Util.Logger(logfile_name=logfile_name)
 
@@ -27,8 +28,8 @@ ORG_TARGET_DATA = os.path.join(ORG_DATA_DIR, "target.csv")
 TARGET_ID = os.path.join(ORG_DATA_DIR, "test_target.csv")
 
 PREPROCESSED_DATA_DIR = os.path.join(APP_ROOT, 'data/preprocessed/')
-PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, "preprocessed3_train_data.csv")
-PREPROCESSED_TEST_DATA = os.path.join(PREPROCESSED_DATA_DIR, "preprocessed3_test_data.csv")
+PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, "preprocessed5_train_data.csv")
+PREPROCESSED_TEST_DATA = os.path.join(PREPROCESSED_DATA_DIR, "preprocessed5_test_data.csv")
 
 
 class RunnerLgbm_initial(RunnerBase):
@@ -40,7 +41,7 @@ class RunnerLgbm_initial(RunnerBase):
         self.n_folds_list = n_folds_list
 
     def _set_model(self):
-        return ModelLgbm_4()
+        return ModelLgbm_5()
 
     def _fetch_preprocessed_data(self):
         raise NotImplementedError
@@ -183,14 +184,14 @@ class RunnerLgbm_initial(RunnerBase):
             logloss = np.mean(list_score_logloss)
             return {'loss': logloss, 'status': STATUS_OK, 'localCV_acc': score_acc}
 
-        space = {"max_depth": hp.quniform('max_depth', 1, 10, 1),
-                 "subsample": hp.quniform('subsample', 0.3, 0.8, 0.01),
-                 "colsample_bytree": hp.quniform('colsample_bytree', 0.3, 0.8, 0.01),
-                 "num_leaves": hp.quniform('num_leaves', 5, 100, 1),
+        space = {"max_depth": hp.quniform('max_depth', 1, 3, 1),
+                 "subsample": hp.quniform('subsample', 0.3, 0.4, 0.02),
+                 "colsample_bytree": hp.quniform('colsample_bytree', 0.3, 0.4, 0.02),
+                 "num_leaves": hp.quniform('num_leaves', 3, 10, 1),
                  }
 
         trials = Trials()
-        best_params = fmin(rstate=hopt_random_state, fn=score, space=space, algo=tpe.suggest, trials=trials, max_evals=80)
+        best_params = fmin(rstate=hopt_random_state, fn=score, space=space, algo=tpe.suggest, trials=trials, max_evals=30)
         self.localCV_acc = list(filter(lambda x: x["loss"] == min(trials.losses()), trials.results))[0]["localCV_acc"][0]
         self.localCV_loss = min(trials.losses())
         logger.info("localCV_acc %s" %self.localCV_acc)
@@ -233,7 +234,7 @@ class RunnerLgbm_initial(RunnerBase):
         df_submit["Proba"] = model.predict_proba(all_test_data)[:, 1]
         logger.info("end predict")
 
-        Util.to_csv(df_submit, "result/submit4.csv", index=False)
+        Util.to_csv(df_submit, "result/submit5.csv", index=False)
         logger.info("localCV acc: %s" %self.localCV_acc)
         logger.info("localCV loss: %s" %self.localCV_loss)
         logger.info("submit file saved")
@@ -244,7 +245,7 @@ if __name__ == "__main__":
     runner.load_X()
     runner.load_y()
     #runner.find_best_cv()
-    runner.set_best_cv(20)
+    runner.set_best_cv(5)
     runner.run_train_hopt()
     runner.run_predict()
 

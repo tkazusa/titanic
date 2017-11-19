@@ -7,6 +7,7 @@ from datetime import date
 import logging
 
 import pandas as pd
+import numpy as np
 
 from util import Util
 logfile_name = "logs/" + str(date.today().isoformat())+ ".log"
@@ -91,28 +92,61 @@ class PreprocesserUseAge(PreprocesserBase):
 
     def estimate_age(self):
         from sklearn.ensemble import RandomForestRegressor
+        logger.info("estimating missing age values with RF")
+
+        self.data["Age_Unknown"] = self.data["Age"].where(self.data["Age"].isnull(), 0)
+        self.data["Age_Unknown"] = self.data["Age"].where(self.data["Age"] == 0, 1)
+
+        self.data["Fillna_Fare"] = self.data["Fare"]
+        self.data["Fillna_Fare"].fillna(self.data["Fillna_Fare"].median(), inplace=True)
 
         age_train = self.data[~self.data["Age"].isnull()]
         age_test = self.data[self.data["Age"].isnull()]
 
         age_train_idx = age_train["PassengerId"]
-        age_X_train = age_train.drop(["Age", "PassengerId", "Ticket", "Name", "data_set"], axis=1)
-        age_y_train = age_train["Age"]
+        age_X_train = age_train.drop(["Age", "Age_Unknown", "Fare", "PassengerId", "Ticket", "Name", "data_set"], axis=1)
+        age_y_train = age_train["Age"].reset_index(drop=True)
 
         age_test_idx =  age_test["PassengerId"]
-        age_X_test = age_test.drop(["Age", "PassengerId", "Ticket", "Name", "data_set"], axis=1)
+        age_X_test = age_test.drop(["Age", "Age_Unknown", "Fare", "PassengerId", "Ticket", "Name", "data_set"], axis=1)
 
-        rfr = RandomForestRegressor(n_estimators=100)
+        rfr = RandomForestRegressor(n_estimators=200, n_jobs=-2)
         rfr.fit(age_X_train, age_y_train)
-        age_y_pred = rfr.predict(age_X_test)
+        age_y_pred = np.trunc(rfr.predict(age_X_test))
 
+        age_pred_test = pd.concat([age_test_idx.reset_index(drop=True), pd.DataFrame(age_y_pred, columns = ["Age_pred"])], axis=1)
+        age_pred_train = pd.concat([age_train_idx.reset_index(drop=True), age_y_train.rename("Age_pred")], axis=1)
+        age_pred = pd.concat([age_pred_train, age_pred_test], axis=0).sort_values(by=["PassengerId"], ascending=True).reset_index(drop=True)
 
-        age_test_idx["Age_pred"] = age_y_pred
-        age_train_idx["Age_pred"] = age_y_train
+        self.data = pd.concat([self.data, age_pred["Age_pred"]], axis=1)
+        self.data = self.data.drop("Age", axis=1)
+        self.data = self.data.drop("Fillna_Fare", axis=1)
 
-        self.data.join(age_test_idx, lsuffix="_org", rsuffix="_pred")
-        self.data.join(age_train_idx, lsuffix="_org", rsuffix="_pred")
-        print(self.data.head())
+    def estimate_fare(self):
+        from sklearn.ensemble import RandomForestRegressor
+        logger.info("estimating missing fare values with RF")
+
+        fare_train = self.data[~self.data["Fare"].isnull()]
+        fare_test = self.data[self.data["Fare"].isnull()]
+
+        fare_train_idx = fare_train["PassengerId"]
+        fare_X_train = fare_train.drop(["Fare", "PassengerId", "Ticket", "Name", "data_set"], axis=1)
+        fare_y_train = fare_train["Fare"].reset_index(drop=True)
+
+        fare_test_idx =  fare_test["PassengerId"]
+        fare_X_test = fare_test.drop(["Fare", "PassengerId", "Ticket", "Name", "data_set"], axis=1)
+
+        rfr = RandomForestRegressor(n_estimators=100, max_depth=3)
+        rfr.fit(fare_X_train, fare_y_train)
+        print(fare_X_test.head())
+        fare_y_pred = np.trunc(rfr.predict(fare_X_test))
+
+        fare_pred_test = pd.concat([fare_test_idx.reset_index(drop=True), pd.DataFrame(fare_y_pred, columns = ["Fare_pred"])], axis=1)
+        fare_pred_train = pd.concat([fare_train_idx.reset_index(drop=True), fare_y_train.rename("Fare_pred")], axis=1)
+        fare_pred = pd.concat([fare_pred_train, fare_pred_test], axis=0).sort_values(by=["PassengerId"], ascending=True).reset_index(drop=True)
+
+        self.data = pd.concat([self.data, fare_pred["Fare_pred"].round(1)], axis=1)
+        self.data = self.data.drop("Fare", axis=1)
 
     def drop_na_samples(self):
         self.data = self.data.dropna(axis=0)

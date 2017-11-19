@@ -14,8 +14,9 @@ from hyperopt import hp, tpe, Trials, STATUS_OK, fmin
 hopt_random_state = np.random.RandomState(3655)
 
 from bases.runner import RunnerBase
-from models.model_lgbm4 import ModelLgbm_4
+from models.model_svm1 import ModelSVM1
 from util import Util
+from features import FEATURE
 logfile_name = "logs/" + str(date.today().isoformat())+ ".log"
 logger = Util.Logger(logfile_name=logfile_name)
 
@@ -27,8 +28,8 @@ ORG_TARGET_DATA = os.path.join(ORG_DATA_DIR, "target.csv")
 TARGET_ID = os.path.join(ORG_DATA_DIR, "test_target.csv")
 
 PREPROCESSED_DATA_DIR = os.path.join(APP_ROOT, 'data/preprocessed/')
-PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, "preprocessed3_train_data.csv")
-PREPROCESSED_TEST_DATA = os.path.join(PREPROCESSED_DATA_DIR, "preprocessed3_test_data.csv")
+PREPROCESSED_TRAIN_DATA = os.path.join(PREPROCESSED_DATA_DIR, "preprocessed5_train_data.csv")
+PREPROCESSED_TEST_DATA = os.path.join(PREPROCESSED_DATA_DIR, "preprocessed5_test_data.csv")
 
 
 class RunnerLgbm_initial(RunnerBase):
@@ -40,7 +41,7 @@ class RunnerLgbm_initial(RunnerBase):
         self.n_folds_list = n_folds_list
 
     def _set_model(self):
-        return ModelLgbm_4()
+        return ModelSVM1()
 
     def _fetch_preprocessed_data(self):
         raise NotImplementedError
@@ -133,11 +134,9 @@ class RunnerLgbm_initial(RunnerBase):
         skf = StratifiedKFold(n_splits=self._best_cv, shuffle=True, random_state=3655)
         sample_weight = self._calc_w(self.y)
         def score(params, skf=skf, sample_weight=sample_weight):
-            prms = {"max_depth": int(params["max_depth"]),
-                    "subsample": params["subsample"],
-                    "colsample_bytree": params['colsample_bytree'],
-                    "num_leaves": int(params['num_leaves']),
-                    "n_jobs": -3
+            prms = {"C": params["C"],
+                    "gamma": params["gamma"],
+                    "kernel": params['kernel']
                     }
 
             list_score_acc = []
@@ -183,24 +182,22 @@ class RunnerLgbm_initial(RunnerBase):
             logloss = np.mean(list_score_logloss)
             return {'loss': logloss, 'status': STATUS_OK, 'localCV_acc': score_acc}
 
-        space = {"max_depth": hp.quniform('max_depth', 1, 10, 1),
-                 "subsample": hp.quniform('subsample', 0.3, 0.8, 0.01),
-                 "colsample_bytree": hp.quniform('colsample_bytree', 0.3, 0.8, 0.01),
-                 "num_leaves": hp.quniform('num_leaves', 5, 100, 1),
-                 }
+        space =  {'C': hp.uniform('C', 0, 2),
+                  'gamma': hp.loguniform('gamma', -8, 2),
+                  'kernel': hp.choice('kernel', ['rbf', 'poly', 'sigmoid'])
+}
 
         trials = Trials()
-        best_params = fmin(rstate=hopt_random_state, fn=score, space=space, algo=tpe.suggest, trials=trials, max_evals=80)
+        best_params = fmin(rstate=hopt_random_state, fn=score, space=space, algo=tpe.suggest, trials=trials, max_evals=30)
         self.localCV_acc = list(filter(lambda x: x["loss"] == min(trials.losses()), trials.results))[0]["localCV_acc"][0]
         self.localCV_loss = min(trials.losses())
         logger.info("localCV_acc %s" %self.localCV_acc)
         logger.info("localCV_loss %s" %self.localCV_loss)
 
-        self.best_params = {"max_depth": int(best_params["max_depth"]),
-                       "subsample": best_params["subsample"],
-                       "colsample_bytree": best_params["colsample_bytree"],
-                       "num_leaves": int(best_params["num_leaves"])
-                       }
+        self.best_params = {"C": best_params["C"],
+                            "gamma": best_params["gamma"],
+                       "kernel": best_params["kernel"]}
+
         logger.info("best params are %s" % self.best_params)
 
         sample_weight = self._calc_w(self.y)
@@ -209,14 +206,8 @@ class RunnerLgbm_initial(RunnerBase):
 
         model.train_all(prms=self.best_params, X_tr=self.X, y_tr=self.y, w_tr=sample_weight)
 
-        imp = pd.DataFrame(model.feature_importances_, columns=['imp'])
-        imp.index = pd.read_csv(PREPROCESSED_TRAIN_DATA).columns
-        logger.info("important features are %s" % imp)
-        with open('features.py', 'a') as f:
-            f.write('FEATURE = ["' + '","'.join(map(str, imp[imp['imp'] > 0].index.values)) + '"]\n')
-
         model.save_model()
-        del model, sample_weight, skf, imp
+        del model, sample_weight, skf
         gc.collect()
 
         logger.info("model with best params is saved")
@@ -233,7 +224,7 @@ class RunnerLgbm_initial(RunnerBase):
         df_submit["Proba"] = model.predict_proba(all_test_data)[:, 1]
         logger.info("end predict")
 
-        Util.to_csv(df_submit, "result/submit4.csv", index=False)
+        Util.to_csv(df_submit, "result/submit5.csv", index=False)
         logger.info("localCV acc: %s" %self.localCV_acc)
         logger.info("localCV loss: %s" %self.localCV_loss)
         logger.info("submit file saved")
@@ -244,7 +235,7 @@ if __name__ == "__main__":
     runner.load_X()
     runner.load_y()
     #runner.find_best_cv()
-    runner.set_best_cv(20)
+    runner.set_best_cv(40)
     runner.run_train_hopt()
     runner.run_predict()
 
